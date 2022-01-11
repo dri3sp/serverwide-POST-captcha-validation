@@ -111,8 +111,7 @@ body {
 	font-size: 16px;
 	font-family: Arial, Helvetica, sans-serif;
 	color: black;
-	background-image: url('//web.futureweb.be/back.png');
-	background-repeat: repeat-x;
+	background: #f8f8f8;
 }
 .whitebackground {
 	padding: 30px;
@@ -121,13 +120,16 @@ body {
 	width: 400px;
 	margin: 0 auto;
 	position: relative;
-	max-width: 900px;
 	border-radius: 10px;
 	text-align: center;
 	height: 140px;
 }
+@media (max-width: 480px) {
+	.whitebackground {
+		width: calc(100% - 80px);
+	}
+}
 h1 {
-	font-family: Arial, Helvetica, sans-serif;
 	font-size: 26px;
 	text-align: center;
 	font-weight: bold;
@@ -135,9 +137,8 @@ h1 {
 }
 .button {
 	padding: 10px;
-
 	background-color: #08d;
-	border-radius: 12px;
+	border-radius: 4px;
 	border: 0;
 	box-sizing: border-box;
 	color: #FFF;
@@ -148,15 +149,17 @@ h1 {
 }
 .dropdown {
 	background-color: #DDD;
-	border-radius: 12px;
-	border: 0;
-	box-sizing: border-box;
+	border-radius: 4px;
 	color: #000;
 	font-size: 14px;
 	height: 30px;
-	outline: 0;
-	padding: 4px 20px 0;
+	text-align: center;
 	width: 100px;
+}
+@media (max-width: 480px) {
+	.dropdown {
+		height: 40px;
+	}
 }
 </style>
 </head>
