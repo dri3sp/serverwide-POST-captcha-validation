@@ -29,7 +29,9 @@ if(isset($_POST['__captcha_validation_answer_hash']) && $_POST['__captcha_valida
 	if(md5($salt.$_POST['__captcha_validation_answer']) == $_POST['__captcha_validation_answer_hash']) {
 
 		$captcha_correct = true;
-		$location = urldecode($REF . $URI . "?" . $QS);
+		if($REF != '') {
+			$location = urldecode($REF . $URI . "?" . $QS);
+		}
 
 		//save client ip
 		if ($CLIENT_IP) {
@@ -105,6 +107,7 @@ if(!$captcha_correct) {
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Captcha validation</title>
 <style>
 body {
@@ -231,7 +234,7 @@ Please press this button to continue.<br />
 </form>
 </div>
 <?php if($REDIRECTED_IP != $CLIENT_IP) { ?>
-<div style="text-align: center; padding-top: 50px;">Warning: your IP changed, this might not work.</div>
+<div style="text-align: center; padding-top: 40px;">Warning: your IP changed, this might not work.</div>
 <?php } ?>
 </body>
 </html>
