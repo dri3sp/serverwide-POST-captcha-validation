@@ -111,7 +111,8 @@ body {
 	font-size: 16px;
 	font-family: Arial, Helvetica, sans-serif;
 	color: black;
-	background-color: #faf5f5;
+	background-image: url('//web.futureweb.be/back.png');
+	background-repeat: repeat-x;
 }
 .whitebackground {
 	padding: 30px;
