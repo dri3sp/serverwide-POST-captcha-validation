@@ -1,1 +1,33 @@
-# serverwide-POST-captcha-validation
+###########################
+#var-www-html directory
+
+Place these files inside /var/www/html and change the ownership to webapps:webapps (or apache:apache)
+Open index.php and change the $salt variable with a random string.
+
+
+###########################
+#httpd.conf
+
+Place these modrewrite rules inside each virtualhost.
+You can create custom virtualhost files for directadmin in /usr/local/directadmin/data/templates/custom/
+Run in custombuild ./build rewrite_configs
+
+The client can disable the captcha by creating a file named '.disable_captcha' inside his documentroot.
+You could also change the disable_captcha rule to an optin-mode, then change that rule with this one:
+RewriteCond %{DOCUMENT_ROOT}/.enable_captcha -f
+
+
+Place the alias rule inside /etc/httpd/conf/extra/httpd-includes.conf
+
+
+###########################
+#cleanup.sh
+
+Create a cronjob for this script
+Change the documentation IP adresses with those that should be kept whitelisted.
+Please configure your server ipv4 and ipv6 aswell (wordpress wp-cron.php needs this).
+You can run this job weekly or monthly to your liking.
+
+
+
+You are done!
