@@ -111,7 +111,6 @@ body {
 	font-size: 16px;
 	font-family: Arial, Helvetica, sans-serif;
 	color: black;
-	background-image: url('//web.futureweb.be/back.png');
 	background-repeat: repeat-x;
 }
 .whitebackground {
