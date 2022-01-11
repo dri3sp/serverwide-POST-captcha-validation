@@ -111,7 +111,7 @@ body {
 	font-size: 16px;
 	font-family: Arial, Helvetica, sans-serif;
 	color: black;
-	background-repeat: repeat-x;
+	background-color: #faf5f5;
 }
 .whitebackground {
 	padding: 30px;
