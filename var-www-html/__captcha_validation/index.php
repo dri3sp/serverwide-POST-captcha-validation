@@ -3,21 +3,74 @@
 $salt = "7RHPXiqNPmGf76ebb6oq"; //please randomize this string yourself
 $datadir = "/var/www/html/__captcha_validation/ip/";
 
+$REF = isset($_GET["ref"]) ? $_GET["ref"] : false;
+$URI = isset($_GET["uri"]) ? $_GET["uri"] : false;
+$QS = (isset($_GET["qs"]) && $_GET["qs"] != '') ? "?" . $_GET["qs"] : false;
+$REDIRECTED_IP = isset($_GET["c"]) ? $_GET["c"] : false;
+$CLIENT_IP = (isset($_SERVER["REMOTE_ADDR"]) && $_SERVER["REMOTE_ADDR"]) ? $_SERVER["REMOTE_ADDR"] : false;
+$LANG = (isset($_SERVER["HTTP_ACCEPT_LANGUAGE"]) && $_SERVER["HTTP_ACCEPT_LANGUAGE"]) ? strtolower(substr($_SERVER["HTTP_ACCEPT_LANGUAGE"], 0, 2)): "en";
+$location = "";
+$captcha_correct = false;
+$allowed = false;
+
+//if you came here with a GET and $REF is set, I will redrect you back, I can't do anything for you
+if($_SERVER["REQUEST_METHOD"] == "GET" && $REF) {
+	$location = urldecode($REF . $URI . $QS);
+
+	header("HTTP/1.1 302 Found");
+	header("Location: " . $location);
+	exit();
+}
+
+include 'cidrmatch.php';
+$cidr = new CIDR();
+$handle = fopen("whitelist.txt", "r");
+if ($handle) {
+	while (($line = fgets($handle)) !== false) {
+		if($cidr->match($_SERVER["REMOTE_ADDR"], $line)) {
+			$allowed = true;
+			break;
+		}
+	}
+	fclose($handle);
+}
+
+// If the request is an ajax (XMLHttpRequest) request, we don't return a captcha, because it breaks these websites.
+// if it is an ajax request, these headers are set:
+//[HTTP_X_REQUESTED_WITH] => XMLHttpRequest
+//[HTTP_ACCEPT] => application/json, text/javascript, */*; q=0.01
+if(!$allowed
+	&& (isset($_SERVER['HTTP_ACCEPT']) && preg_match('/(text\/javascript|application\/json)/', $_SERVER['HTTP_ACCEPT']) && !preg_match('/(text\/html)/', $_SERVER['HTTP_ACCEPT']))
+	|| (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] == "XMLHttpRequest")) {
+	//I have wrote my own logic here to decide if it's a bot nor not, I have decided not to share my code.
+	//Write your logic here, or just allow the request to go thru
+	//If you want to share your method, please do.
+
+	$allowed = true;
+}
+
+if($allowed) {
+	//Save client ip in the allowed list
+	if ($handle = fopen($datadir . $CLIENT_IP . ".dat", 'w')) {
+		fclose($handle);
+	}
+
+	if($REF) {
+		$location = urldecode($REF . $URI . $QS);
+	}
+
+	//We redirect the browser again with a HTTP 307
+	header("HTTP/1.1 307 Temporary Redirect");
+	header("Location: " . $location);
+	exit();
+}
+
 header("Content-type: text/html; charset=utf-8");
 header("Expires: Mon, 29 Jun 1981 05:00:00 GMT");
 header("Last-Modified: " . gmdate("D, d M Y H:i:s") . " GMT");
 header("Cache-Control: no-store, no-cache, must-revalidate");
 header("Cache-Control: post-check=0, pre-check=0", false);
 header("Pragma: no-cache");
-
-$REF = (isset($_GET["ref"]) && $_GET["ref"]) ? $_GET["ref"] : false;
-$URI = (isset($_GET["uri"]) && $_GET["uri"]) ? $_GET["uri"] : false;
-$QS = (isset($_GET["qs"]) && $_GET["qs"]) ? $_GET["qs"] : false;
-$REDIRECTED_IP = (isset($_GET["c"]) && $_GET["c"]) ? $_GET["c"] : false;
-$CLIENT_IP = (isset($_SERVER["REMOTE_ADDR"]) && $_SERVER["REMOTE_ADDR"]) ? $_SERVER["REMOTE_ADDR"] : false;
-$LANG = (isset($_SERVER["HTTP_ACCEPT_LANGUAGE"]) && $_SERVER["HTTP_ACCEPT_LANGUAGE"]) ? strtolower(substr($_SERVER["HTTP_ACCEPT_LANGUAGE"], 0, 2)): "en";
-$location = "";
-$captcha_correct = false;
 
 $h1title = "Please validate the captcha field before submitting your request";
 if($LANG == 'nl') {
@@ -29,18 +82,13 @@ if(isset($_POST['__captcha_validation_answer_hash']) && $_POST['__captcha_valida
 	if(md5($salt.$_POST['__captcha_validation_answer']) == $_POST['__captcha_validation_answer_hash']) {
 
 		$captcha_correct = true;
-		if($REF != '') {
-			$location = urldecode($REF . $URI . "?" . $QS);
+		if($REF) {
+			$location = urldecode($REF . $URI . $QS);
 		}
 
 		//save client ip
-		if ($CLIENT_IP) {
-			$IPF=$datadir.$CLIENT_IP.".dat";
-			if (is_dir($datadir)) {
-				if ($handle = fopen($IPF, 'w')) {
-					fclose($handle);
-				}
-			}
+		if ($handle = fopen($datadir . $CLIENT_IP . ".dat", 'w')) {
+			fclose($handle);
 		}
 	}
 
@@ -232,9 +280,10 @@ Please press this button to continue.<br />
 <?php } ?>
 
 </form>
-</div>
-<?php if($REDIRECTED_IP != $CLIENT_IP) { ?>
+<?php if($REDIRECTED_IP && $REDIRECTED_IP != $CLIENT_IP) { ?>
 <div style="text-align: center; padding-top: 40px;">Warning: your IP changed, this might not work.</div>
 <?php } ?>
+
+</div>
 </body>
 </html>
