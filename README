@@ -21,6 +21,13 @@ Place the alias rule inside /etc/httpd/conf/extra/httpd-includes.conf
 
 
 ###########################
+#/var/www/html/__captcha_validation/whitelist.txt
+
+Place the ip ranges that should be whitelisted inside this file.
+Don't use whitespaces, blank lines or comments.
+
+
+###########################
 #cleanup.sh
 
 Create a cronjob for this script
