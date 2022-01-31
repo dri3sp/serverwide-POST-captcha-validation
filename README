@@ -23,7 +23,7 @@ Place the alias rule inside /etc/httpd/conf/extra/httpd-includes.conf
 ###########################
 #/var/www/html/__captcha_validation/whitelist.txt
 
-Place the ip ranges that should be whitelisted inside this file.
+Place the ip ranges that should be whitelisted inside this file, only use the CIDR notation (eg /24 or /48).
 Don't use whitespaces, blank lines or comments.
 
 
