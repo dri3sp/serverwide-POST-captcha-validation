@@ -1,5 +1,8 @@
 <?php
 
+error_reporting(0);
+ini_set('display_errors', 0);
+
 $salt = "7RHPXiqNPmGf76ebb6oq"; //please randomize this string yourself
 $datadir = "/var/www/html/__captcha_validation/ip/";
 
@@ -9,14 +12,17 @@ $QS = (isset($_GET["qs"]) && $_GET["qs"] != '') ? "?" . $_GET["qs"] : false;
 $REDIRECTED_IP = isset($_GET["c"]) ? $_GET["c"] : false;
 $CLIENT_IP = (isset($_SERVER["REMOTE_ADDR"]) && $_SERVER["REMOTE_ADDR"]) ? $_SERVER["REMOTE_ADDR"] : false;
 $LANG = (isset($_SERVER["HTTP_ACCEPT_LANGUAGE"]) && $_SERVER["HTTP_ACCEPT_LANGUAGE"]) ? strtolower(substr($_SERVER["HTTP_ACCEPT_LANGUAGE"], 0, 2)): "en";
-$location = "";
 $captcha_correct = false;
 $allowed = false;
 
-//if you came here with a GET and $REF is set, I will redrect you back, I can't do anything for you
-if($_SERVER["REQUEST_METHOD"] == "GET" && $REF) {
-	$location = urldecode($REF . $URI . $QS);
+$location = urldecode($REF . $URI . $QS);
+foreach($_GET as $a => $b) {
+	if($a != 'ref' && $a != 'uri' && $a != 'qs' && $a != 'c')
+		$location .= '&' . $a . '=' . urldecode($b);
+}
 
+//if you came here with a GET and $REF is set, I will redrect you back, I can't do anything for you
+if($_SERVER["REQUEST_METHOD"] == "GET" && $REF != '') {
 	header("HTTP/1.1 302 Found");
 	header("Location: " . $location);
 	exit();
@@ -27,7 +33,8 @@ $cidr = new CIDR();
 $handle = fopen("whitelist.txt", "r");
 if ($handle) {
 	while (($line = fgets($handle)) !== false) {
-		if($cidr->match($_SERVER["REMOTE_ADDR"], $line)) {
+		if(preg_match('/^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\/\d{1,2})|([a-fA-F0-9]{1,4}\:[a-fA-F0-9:]{1,99}\/\d{1,3})$/', $line)
+			&& $cidr->match($_SERVER["REMOTE_ADDR"], $line)) {
 			$allowed = true;
 			break;
 		}
@@ -49,14 +56,10 @@ if(!$allowed
 	$allowed = true;
 }
 
-if($allowed) {
+if($allowed && $REF != '') {
 	//Save client ip in the allowed list
 	if ($handle = fopen($datadir . $CLIENT_IP . ".dat", 'w')) {
 		fclose($handle);
-	}
-
-	if($REF) {
-		$location = urldecode($REF . $URI . $QS);
 	}
 
 	//We redirect the browser again with a HTTP 307
@@ -82,9 +85,6 @@ if(isset($_POST['__captcha_validation_answer_hash']) && $_POST['__captcha_valida
 	if(md5($salt.$_POST['__captcha_validation_answer']) == $_POST['__captcha_validation_answer_hash']) {
 
 		$captcha_correct = true;
-		if($REF) {
-			$location = urldecode($REF . $URI . $QS);
-		}
 
 		//save client ip
 		if ($handle = fopen($datadir . $CLIENT_IP . ".dat", 'w')) {
@@ -218,7 +218,7 @@ h1 {
 <body>
 <h1><?php echo $h1title ?></h1>
 <div class="whitebackground">
-<form id="__captcha_validation_form" action="<?php echo $location ?>" method="post">
+<form id="__captcha_validation_form" action="<?php echo $captcha_correct ? $location : '' ?>" method="post">
 <?php
 foreach ($_POST as $a => $b) {
 	if(!is_array($_POST[$a])) {
@@ -270,7 +270,7 @@ foreach ($_POST as $a => $b) {
 <input class="button" type="submit" name="__captcha_validation_answer_submit" value="Validate" />
 <?php } else { ?>
 Validation succeeded.<br />
-<?php if($location != "") { ?>
+<?php if($captcha_correct) { ?>
 Please press this button to continue.<br />
 <script type="text/javascript">
     document.getElementById('__captcha_validation_form').submit();
