@@ -3,7 +3,7 @@
 error_reporting(0);
 ini_set('display_errors', 0);
 
-$salt = "7RHPXiqNPmGf76ebb6oq"; //please randomize this string yourself
+$salt = "4bCMEvqjoXvEj7G5C89A"; //please randomize this string yourself
 $datadir = "/var/www/html/__captcha_validation/ip/";
 
 $REF = isset($_GET["ref"]) ? $_GET["ref"] : false;
@@ -13,7 +13,12 @@ $REDIRECTED_IP = isset($_GET["c"]) ? $_GET["c"] : false;
 $CLIENT_IP = (isset($_SERVER["REMOTE_ADDR"]) && $_SERVER["REMOTE_ADDR"]) ? $_SERVER["REMOTE_ADDR"] : false;
 $LANG = (isset($_SERVER["HTTP_ACCEPT_LANGUAGE"]) && $_SERVER["HTTP_ACCEPT_LANGUAGE"]) ? strtolower(substr($_SERVER["HTTP_ACCEPT_LANGUAGE"], 0, 2)): "en";
 $captcha_correct = false;
-$allowed = false;
+$ipwhitelisted = false;
+$createcookie = false;
+$domain = $REF;
+$domain = str_replace('www.', '', $domain);
+$domain = str_replace('http://', '', $domain);
+$domain = str_replace('https://', '', $domain);
 
 $location = urldecode($REF . $URI . $QS);
 foreach($_GET as $a => $b) {
@@ -28,6 +33,19 @@ if($_SERVER["REQUEST_METHOD"] == "GET" && $REF != '') {
 	exit();
 }
 
+//if you are already whitelisted, I will redirect you to the root of this website
+if(file_exists($datadir . $CLIENT_IP . ".dat")) {
+	header("HTTP/1.1 302 Found");
+	header("Location: " . $_SERVER['REQUEST_SCHEME'] . "://" . $_SERVER['SERVER_NAME']);
+	exit();
+}
+
+/*if($handle = fopen($datadir . 'd-' . $CLIENT_IP, 'w')) {
+	fwrite($handle, print_r($_SERVER,true));
+	fwrite($handle, print_r($_POST,true));
+	fclose($handle);
+}*/
+
 include 'cidrmatch.php';
 $cidr = new CIDR();
 $handle = fopen("whitelist.txt", "r");
@@ -35,49 +53,46 @@ if ($handle) {
 	while (($line = fgets($handle)) !== false) {
 		if(preg_match('/^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\/\d{1,2})|([a-fA-F0-9]{1,4}\:[a-fA-F0-9:]{1,99}\/\d{1,3})$/', $line)
 			&& $cidr->match($_SERVER["REMOTE_ADDR"], $line)) {
-			$allowed = true;
+			$ipwhitelisted = true;
 			break;
 		}
 	}
 	fclose($handle);
 }
 
-// If the request is an ajax (XMLHttpRequest) request, we don't return a captcha, because it breaks these websites.
-// if it is an ajax request, these headers are set:
+if (isset($_COOKIE["__captcha_validation"]) && $_COOKIE["__captcha_validation"] != '' && preg_match('/^([a-z0-9]){32}$/', $_COOKIE["__captcha_validation"])) {
+
+	if ($_COOKIE["__captcha_validation"] == md5($salt.date("Ymd"))) {
+		$ipwhitelisted = true;
+	}
+
+}
+
 //[HTTP_X_REQUESTED_WITH] => XMLHttpRequest
 //[HTTP_ACCEPT] => application/json, text/javascript, */*; q=0.01
-if(!$allowed
+if(!$ipwhitelisted
 	&& (isset($_SERVER['HTTP_ACCEPT']) && preg_match('/(text\/javascript|application\/json)/', $_SERVER['HTTP_ACCEPT']) && !preg_match('/(text\/html)/', $_SERVER['HTTP_ACCEPT']))
 	|| (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] == "XMLHttpRequest")) {
 	//I have wrote my own logic here to decide if it's a bot nor not, I have decided not to share my code.
 	//Write your logic here, or just allow the request to go thru
 	//If you want to share your method, please do.
 
-	$allowed = true;
+	$ipwhitelisted = true;
+
+	//create a cookie for IPs that change
+	setcookie("__captcha_validation", md5($salt.date("Ymd")), time()+86400);
+	}
 }
 
-if($allowed && $REF != '') {
-	//Save client ip in the allowed list
+if($ipwhitelisted && $REF != '') {
+	//save client ip
 	if ($handle = fopen($datadir . $CLIENT_IP . ".dat", 'w')) {
 		fclose($handle);
 	}
 
-	//We redirect the browser again with a HTTP 307
 	header("HTTP/1.1 307 Temporary Redirect");
 	header("Location: " . $location);
 	exit();
-}
-
-header("Content-type: text/html; charset=utf-8");
-header("Expires: Mon, 29 Jun 1981 05:00:00 GMT");
-header("Last-Modified: " . gmdate("D, d M Y H:i:s") . " GMT");
-header("Cache-Control: no-store, no-cache, must-revalidate");
-header("Cache-Control: post-check=0, pre-check=0", false);
-header("Pragma: no-cache");
-
-$h1title = "Please validate the captcha field before submitting your request";
-if($LANG == 'nl') {
-	$h1title = "Gelieve het captcha veld te valideren alvorens verder te gaan";
 }
 
 if(isset($_POST['__captcha_validation_answer_hash']) && $_POST['__captcha_validation_answer_hash'] != "" && preg_match('/^([a-z0-9]){32}$/', $_POST['__captcha_validation_answer_hash']) && preg_match('/^([0-9]){1,2}$/', $_POST['__captcha_validation_answer'])) {
@@ -85,6 +100,9 @@ if(isset($_POST['__captcha_validation_answer_hash']) && $_POST['__captcha_valida
 	if(md5($salt.$_POST['__captcha_validation_answer']) == $_POST['__captcha_validation_answer_hash']) {
 
 		$captcha_correct = true;
+
+		//create a cookie for IPs that change
+		setcookie("__captcha_validation", md5($salt.date("Ymd")), time()+86400);
 
 		//save client ip
 		if ($handle = fopen($datadir . $CLIENT_IP . ".dat", 'w')) {
@@ -149,6 +167,18 @@ if(!$captcha_correct) {
 	}
 
 }
+
+$h1title = "Please validate the captcha field before submitting your request";
+if($LANG == 'nl') {
+	$h1title = "Gelieve het captcha veld te valideren alvorens verder te gaan";
+}
+
+header("Content-type: text/html; charset=utf-8");
+header("Expires: Mon, 29 Jun 1981 05:00:00 GMT");
+header("Last-Modified: " . gmdate("D, d M Y H:i:s") . " GMT");
+header("Cache-Control: no-store, no-cache, must-revalidate");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache");
 
 ?>
 <!DOCTYPE HTML>
@@ -218,7 +248,7 @@ h1 {
 <body>
 <h1><?php echo $h1title ?></h1>
 <div class="whitebackground">
-<form id="__captcha_validation_form" action="<?php echo $captcha_correct ? $location : '' ?>" method="post">
+<form id="__captcha_validation_form" name="__captcha_validation_form" action="<?php echo $captcha_correct ? $location : '' ?>" method="post">
 <?php
 foreach ($_POST as $a => $b) {
 	if(!is_array($_POST[$a])) {
@@ -273,7 +303,7 @@ Validation succeeded.<br />
 <?php if($captcha_correct) { ?>
 Please press this button to continue.<br />
 <script type="text/javascript">
-    document.getElementById('__captcha_validation_form').submit();
+    document.__captcha_validation_form.submit();
 </script>
 <input class="button" type="submit" name="__captcha_validation_answer_submit" value="Continue" />
 <?php } ?>
