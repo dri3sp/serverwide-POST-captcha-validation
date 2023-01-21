@@ -159,7 +159,7 @@ class CIDR{
         $ip = inet_pton($ip);
 
 		// thanks to MW on http://stackoverflow.com/questions/7951061/matching-ipv6-address-to-a-cidr-subnet
-		$binMask = str_repeat("f", $mask / 4);
+		$binMask = str_repeat("f", (int)($mask / 4));
         switch ($mask % 4) {
             case 0:
                 break;
